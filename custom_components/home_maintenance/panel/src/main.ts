@@ -2,10 +2,10 @@ import {
     mdiCheckCircleOutline,
     mdiDelete,
     mdiPencil,
-    mdiDotsHorizontal,
+    mdiBellRingOutline,
 } from "@mdi/js";
 import { LitElement, html, nothing } from "lit";
-import { property, state, query } from "lit/decorators.js";
+import { property, state } from "lit/decorators.js";
 import type { HomeAssistant } from "custom-card-helpers";
 import { formatDateNumeric } from "custom-card-helpers";
 
@@ -75,10 +75,6 @@ export class HomeMaintenancePanel extends LitElement {
         notify_when: "due_and_overdue",
         notify_days_before_due: "",
     };
-
-    // Shared overflow menu state
-    @state() private _selectedTaskId: string | null = null;
-    @query("#actions-menu") private _actionsMenu?: any;
 
     private get _columns() {
         return {
@@ -180,19 +176,39 @@ export class HomeMaintenancePanel extends LitElement {
                 ></ha-icon-button>
               `,
             },
-            actions: {
-                title: "",
-                label: "actions",
+            edit: {
+                minWidth: "64px",
+                maxWidth: "64px",
+                sortable: false,
+                groupable: false,
                 showNarrow: true,
                 moveable: false,
                 hideable: false,
-                type: "overflow-menu",
+                type: "overflow",
                 template: (task: Task) => html`
                     <ha-icon-button
-                        @click=${(e: Event) => this._handleShowMenu(task.id, e)}
-                        .label="Actions"
-                        title="Actions"
-                        .path=${mdiDotsHorizontal}
+                        @click=${() => this._handleOpenEditDialogClick(task.id)}
+                        .label="Edit"
+                        title="Edit Task"
+                        .path=${mdiPencil}
+                    ></ha-icon-button>
+                `,
+            },
+            remove: {
+                minWidth: "64px",
+                maxWidth: "64px",
+                sortable: false,
+                groupable: false,
+                showNarrow: true,
+                moveable: false,
+                hideable: false,
+                type: "overflow",
+                template: (task: Task) => html`
+                    <ha-icon-button
+                        @click=${() => this._handleRemoveTaskClick(task.id)}
+                        .label="Delete"
+                        title="Delete Task"
+                        .path=${mdiDelete}
                     ></ha-icon-button>
                 `,
             },
@@ -520,7 +536,6 @@ export class HomeMaintenancePanel extends LitElement {
             </div>
 
             ${this.renderEditDialog()}
-            ${this.renderActionsMenu()}
         `;
     }
 
@@ -553,9 +568,13 @@ export class HomeMaintenancePanel extends LitElement {
             </ha-expansion-panel>
 
             <div class="form-actions">
-                <mwc-button raised class="add-button" @click=${this._handleAddTaskClick}>
+                <button type="button" class="action-button secondary-button" @click=${this._handleTestNotificationClick}>
+                    <ha-svg-icon .path=${mdiBellRingOutline}></ha-svg-icon>
+                    <span>${localize('panel.cards.new.actions.test_notification', this.hass.language)}</span>
+                </button>
+                <button type="button" class="action-button primary-button" @click=${this._handleAddTaskClick}>
                     ${localize('panel.cards.new.actions.add_task', this.hass.language)}
-                </mwc-button>
+                </button>
             </div>
         `;
     }
@@ -614,35 +633,6 @@ export class HomeMaintenancePanel extends LitElement {
         `;
     }
 
-    renderActionsMenu() {
-        if (!this.hass) return html``;
-
-        return html`
-            <ha-md-menu id="actions-menu" positioning="fixed">
-                <ha-md-menu-item
-                    @click=${() => {
-                if (this._selectedTaskId) {
-                    this._handleOpenEditDialogClick(this._selectedTaskId);
-                }
-            }}
-                >
-                    <ha-svg-icon slot="start" path=${mdiPencil}></ha-svg-icon>
-                    ${localize('panel.cards.current.actions.edit', this.hass!.language)}
-                </ha-md-menu-item>
-                <ha-md-menu-item
-                    @click=${() => {
-                if (this._selectedTaskId) {
-                    this._handleRemoveTaskClick(this._selectedTaskId);
-                }
-            }}
-                >
-                    <ha-svg-icon slot="start" path=${mdiDelete}></ha-svg-icon>
-                    ${localize('panel.cards.current.actions.remove', this.hass!.language)}
-                </ha-md-menu-item>
-            </ha-md-menu>
-        `;
-    }
-
     private async _handleAddTaskClick() {
         const {
             title,
@@ -689,6 +679,36 @@ export class HomeMaintenancePanel extends LitElement {
             alert(msg);
         }
     };
+
+    private async _handleTestNotificationClick() {
+        if (!this.hass) return;
+
+        const { title, notifications_enabled, notification_target, notification_url } = this._formData;
+        if (!notifications_enabled || !notification_target?.trim()) {
+            alert(localize("panel.cards.new.alerts.notification_required", this.hass.language));
+            return;
+        }
+
+        const [domain, action] = notification_target.includes(".")
+            ? notification_target.split(".", 2)
+            : ["notify", notification_target];
+
+        try {
+            await this.hass.callService(domain, action, {
+                title: title?.trim() || "Home Maintenance Test",
+                message: "Test notification from Home Maintenance.",
+                data: {
+                    actions: notification_url?.trim()
+                        ? [{ action: "URI", title: "Open", uri: notification_url.trim() }]
+                        : [],
+                    url: notification_url?.trim() || undefined,
+                },
+            });
+        } catch (error) {
+            console.error("Failed to send test notification:", error);
+            alert(localize("panel.cards.new.alerts.notification_error", this.hass.language));
+        }
+    }
 
     private async _handleCompleteTaskClick(id: string) {
         try {
@@ -796,18 +816,7 @@ export class HomeMaintenancePanel extends LitElement {
         this._editFormData = { ...this._editFormData, ...ev.detail.value };
     }
 
-    private _handleShowMenu(taskId: string, ev: Event) {
-        this._selectedTaskId = taskId;
-
-        if (!this._actionsMenu) {
-            return;
-        }
-
-        this._actionsMenu.anchorElement = ev.currentTarget as HTMLElement;
-        this._actionsMenu.show();
-
-        ev.stopPropagation();
-    } static styles = commonStyle;
+    static styles = commonStyle;
 }
 
 customElements.define("home-maintenance-panel", HomeMaintenancePanel);

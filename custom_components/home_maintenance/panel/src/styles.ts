@@ -141,12 +141,59 @@ export const commonStyle = css`
 
     .form-actions {
         display: flex;
+        gap: 12px;
         justify-content: flex-end;
+        align-items: center;
         margin-top: 16px;
     }
 
-    .add-button {
-        --mdc-theme-primary: var(--primary-color);
+    .action-button {
+        appearance: none;
+        border: none;
+        border-radius: 999px;
+        min-height: 40px;
+        padding: 0 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    .action-button:hover {
+        transform: translateY(-1px);
+    }
+
+    .primary-button {
+        background: var(--primary-color);
+        color: var(--text-primary-color, #fff);
+        box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.18));
+    }
+
+    .secondary-button {
+        background: color-mix(in srgb, var(--primary-color) 12%, var(--card-background-color) 88%);
+        color: var(--primary-text-color);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 24%, transparent 76%);
+    }
+
+    .action-button ha-svg-icon {
+        width: 18px;
+        height: 18px;
+        display: inline-flex;
+    }
+
+    @media (max-width: 600px) {
+        .form-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .action-button {
+            width: 100%;
+        }
     }
 
     ha-dialog {

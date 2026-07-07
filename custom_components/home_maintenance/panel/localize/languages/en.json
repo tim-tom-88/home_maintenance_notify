@@ -59,11 +59,14 @@
                     "optional": "Optional settings"
                 },
                 "actions": {
-                    "add_task": "Add Task"
+                    "add_task": "Add Task",
+                    "test_notification": "Test Notification"
                 },
                 "alerts": {
                     "required": "Please fill all fields",
-                    "error": "Error adding task. See console for details."
+                    "error": "Error adding task. See console for details.",
+                    "notification_required": "Enable notifications and select a notify service first.",
+                    "notification_error": "Error sending test notification. See console for details."
                 }
             },
             "current": {

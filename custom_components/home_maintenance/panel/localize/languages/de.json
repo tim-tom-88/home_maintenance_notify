@@ -59,11 +59,14 @@
                     "optional": "Optionale Einstellungen"
                 },
                 "actions": {
-                    "add_task": "Aufgabe hinzufügen"
+                    "add_task": "Aufgabe hinzufügen",
+                    "test_notification": "Benachrichtigung testen"
                 },
                 "alerts": {
                     "required": "Bitte alle Felder ausfüllen",
-                    "error": "Fehler beim Hinzufügen der Aufgabe. Siehe Konsole für Details."
+                    "error": "Fehler beim Hinzufügen der Aufgabe. Siehe Konsole für Details.",
+                    "notification_required": "Aktivieren Sie Benachrichtigungen und wählen Sie zuerst einen Benachrichtigungsdienst.",
+                    "notification_error": "Fehler beim Senden der Testbenachrichtigung. Siehe Konsole für Details."
                 }
             },
             "current": {
