@@ -6,7 +6,6 @@ import logging
 from datetime import timedelta
 from typing import Any
 
-from homeassistant.components.mobile_app.const import EVENT_RECEIVED_ACTION
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
@@ -15,6 +14,7 @@ from . import const
 from .task_utils import get_task_due_details
 
 _LOGGER = logging.getLogger(__name__)
+MOBILE_APP_ACTION_EVENT = "mobile_app_notification_action"
 
 
 class HomeMaintenanceNotificationManager:
@@ -35,7 +35,7 @@ class HomeMaintenanceNotificationManager:
             self.hass, self._handle_task_change, hour=0, minute=5, second=0
         )
         self._remove_action_listener = self.hass.bus.async_listen(
-            EVENT_RECEIVED_ACTION, self._handle_mobile_action
+            MOBILE_APP_ACTION_EVENT, self._handle_mobile_action
         )
         await self.async_process_notifications()
 
