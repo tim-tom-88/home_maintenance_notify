@@ -54,5 +54,6 @@ export interface Task {
     notify_when?: "due" | "overdue" | "due_and_overdue";
     notify_days_before_due?: number | null;
     notification_target?: string;
+    notification_time?: string;
     snooze_until?: string | null;
 }

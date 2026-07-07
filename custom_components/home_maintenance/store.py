@@ -37,6 +37,7 @@ class HomeMaintenanceTask:
     notify_when: str = attr.ib(default="due_and_overdue")
     notify_days_before_due: int | None = attr.ib(default=None)
     notification_target: str | None = attr.ib(default=None)
+    notification_time: str = attr.ib(default="09:00")
     snooze_until: str | None = attr.ib(default=None)
     last_notification_kind: str | None = attr.ib(default=None)
     last_notification_date: str | None = attr.ib(default=None)

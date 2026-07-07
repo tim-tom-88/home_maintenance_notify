@@ -50,6 +50,10 @@
                         "heading": "Benachrichtigungsdienst",
                         "helper": "Beispiel: notify.mobile_app_mein_handy oder mobile_app_mein_handy"
                     },
+                    "notification_time": {
+                        "heading": "Uhrzeit",
+                        "helper": "Wann automatische Benachrichtigungen gesendet werden sollen"
+                    },
                     "notification_url": {
                         "heading": "URL öffnen",
                         "helper": "Optionale URL für die Aktion Öffnen"
@@ -116,6 +120,10 @@
                     "notification_target": {
                         "heading": "Benachrichtigungsdienst",
                         "helper": "Beispiel: notify.mobile_app_mein_handy oder mobile_app_mein_handy"
+                    },
+                    "notification_time": {
+                        "heading": "Uhrzeit",
+                        "helper": "Wann automatische Benachrichtigungen gesendet werden sollen"
                     },
                     "notification_url": {
                         "heading": "URL öffnen",

@@ -99,6 +99,7 @@ class HomeMaintenanceSensor(BinarySensorEntity):
             "days_until_due": due_details["days_until_due"],
             "notifications_enabled": self.task.get("notifications_enabled", False),
             "notify_when": self.task.get("notify_when"),
+            "notification_time": self.task.get("notification_time"),
         }
         if self.task["tag_id"]:
             self._attr_extra_state_attributes["tag_id"] = self.task["tag_id"]

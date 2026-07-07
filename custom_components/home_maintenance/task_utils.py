@@ -25,6 +25,7 @@ def normalize_task_data(task_data: dict[str, Any]) -> dict[str, Any]:
     for key in (
         "notification_url",
         "notification_target",
+        "notification_time",
         "tag_id",
         "icon",
         "snooze_until",
@@ -38,7 +39,17 @@ def normalize_task_data(task_data: dict[str, Any]) -> dict[str, Any]:
         normalized.get("notifications_enabled", False)
     )
     normalized["notify_when"] = normalized.get("notify_when") or "due_and_overdue"
+    normalized["notification_time"] = normalized.get("notification_time") or "09:00"
     return normalized
+
+
+def parse_notification_time(value: str | None) -> tuple[int, int]:
+    """Parse an HH:MM notification time."""
+    if not value:
+        return (9, 0)
+
+    hour_text, minute_text = value.split(":", 1)
+    return (int(hour_text), int(minute_text))
 
 
 def _as_local_start_of_day(value: datetime) -> datetime:

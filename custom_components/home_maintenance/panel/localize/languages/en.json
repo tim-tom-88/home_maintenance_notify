@@ -50,6 +50,10 @@
                         "heading": "Notify service",
                         "helper": "Example: notify.mobile_app_my_phone or mobile_app_my_phone"
                     },
+                    "notification_time": {
+                        "heading": "Time of day",
+                        "helper": "When automatic notifications should be sent"
+                    },
                     "notification_url": {
                         "heading": "Open URL",
                         "helper": "Optional URL used by the notification Open action"
@@ -116,6 +120,10 @@
                     "notification_target": {
                         "heading": "Notify service",
                         "helper": "Example: notify.mobile_app_my_phone or mobile_app_my_phone"
+                    },
+                    "notification_time": {
+                        "heading": "Time of day",
+                        "helper": "When automatic notifications should be sent"
                     },
                     "notification_url": {
                         "heading": "Open URL",

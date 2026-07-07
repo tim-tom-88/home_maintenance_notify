@@ -71,6 +71,7 @@ def websocket_add_task(
         notify_when=msg.get("notify_when", "due_and_overdue"),
         notify_days_before_due=msg.get("notify_days_before_due"),
         notification_target=msg.get("notification_target"),
+        notification_time=msg.get("notification_time", "09:00"),
     )
 
     labels = msg.get("labels", [])
@@ -202,6 +203,7 @@ async def async_register_websockets(hass: HomeAssistant) -> None:
                 ),
                 vol.Optional("notify_days_before_due"): vol.Any(None, int),
                 vol.Optional("notification_target"): str,
+                vol.Optional("notification_time"): str,
             }
         ),
     )

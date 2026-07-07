@@ -36,6 +36,7 @@ TASK_DEFAULTS = {
     "notify_when": "due_and_overdue",
     "notify_days_before_due": None,
     "notification_target": None,
+    "notification_time": "09:00",
     "snooze_until": None,
     "last_notification_kind": None,
     "last_notification_date": None,

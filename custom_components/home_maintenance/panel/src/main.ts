@@ -27,6 +27,7 @@ interface TaskFormData {
     notifications_enabled: boolean;
     notification_target: string;
     notification_url: string;
+    notification_time: string;
     notify_when: "due" | "overdue" | "due_and_overdue";
     notify_days_before_due: number | "";
 }
@@ -54,6 +55,7 @@ export class HomeMaintenancePanel extends LitElement {
         notifications_enabled: false,
         notification_target: "",
         notification_url: "",
+        notification_time: "09:00",
         notify_when: "due_and_overdue",
         notify_days_before_due: "",
     };
@@ -72,6 +74,7 @@ export class HomeMaintenancePanel extends LitElement {
         notifications_enabled: false,
         notification_target: "",
         notification_url: "",
+        notification_time: "09:00",
         notify_when: "due_and_overdue",
         notify_days_before_due: "",
     };
@@ -309,6 +312,7 @@ export class HomeMaintenancePanel extends LitElement {
                 },
             },
             { name: "notify_days_before_due", selector: { number: { min: 1, mode: "box" } }, },
+            { name: "notification_time", selector: { time: {} }, },
             {
                 name: "notification_target",
                 selector: {
@@ -364,6 +368,7 @@ export class HomeMaintenancePanel extends LitElement {
                 },
             },
             { name: "notify_days_before_due", selector: { number: { min: 1, mode: "box" } }, },
+            { name: "notification_time", selector: { time: {} }, },
             {
                 name: "notification_target",
                 selector: {
@@ -441,6 +446,7 @@ export class HomeMaintenancePanel extends LitElement {
             notifications_enabled: false,
             notification_target: "",
             notification_url: "",
+            notification_time: "09:00",
             notify_when: "due_and_overdue",
             notify_days_before_due: "",
         };
@@ -460,6 +466,7 @@ export class HomeMaintenancePanel extends LitElement {
             notifications_enabled: false,
             notification_target: "",
             notification_url: "",
+            notification_time: "09:00",
             notify_when: "due_and_overdue",
             notify_days_before_due: "",
         };
@@ -645,6 +652,7 @@ export class HomeMaintenancePanel extends LitElement {
             notifications_enabled,
             notification_target,
             notification_url,
+            notification_time,
             notify_when,
             notify_days_before_due,
         } = this._formData;
@@ -666,6 +674,7 @@ export class HomeMaintenancePanel extends LitElement {
             notifications_enabled,
             notification_target: notification_target?.trim() || undefined,
             notification_url: notification_url?.trim() || undefined,
+            notification_time,
             notify_when,
             notify_days_before_due: notify_days_before_due === "" ? undefined : Number(notify_days_before_due),
         };
@@ -683,7 +692,17 @@ export class HomeMaintenancePanel extends LitElement {
     private async _handleTestNotificationClick() {
         if (!this.hass) return;
 
-        const { title, notifications_enabled, notification_target, notification_url } = this._formData;
+        const {
+            title,
+            interval_value,
+            interval_type,
+            last_performed,
+            notifications_enabled,
+            notification_target,
+            notification_url,
+            notify_when,
+            notify_days_before_due,
+        } = this._formData;
         if (!notifications_enabled || !notification_target?.trim()) {
             alert(localize("panel.cards.new.alerts.notification_required", this.hass.language));
             return;
@@ -693,10 +712,24 @@ export class HomeMaintenancePanel extends LitElement {
             ? notification_target.split(".", 2)
             : ["notify", notification_target];
 
+        const previewKind = this._getPreviewNotificationKind({
+            title: title?.trim() || "Home Maintenance Test",
+            interval_value: Number(interval_value || 1),
+            interval_type,
+            last_performed: this.computeISODate(last_performed),
+            notify_when,
+            notify_days_before_due: notify_days_before_due === "" ? null : Number(notify_days_before_due),
+        });
+        const previewMessage = this._buildPreviewMessage(
+            title?.trim() || "Home Maintenance Test",
+            previewKind,
+            notify_days_before_due === "" ? null : Number(notify_days_before_due),
+        );
+
         try {
             await this.hass.callService(domain, action, {
                 title: title?.trim() || "Home Maintenance Test",
-                message: "Test notification from Home Maintenance.",
+                message: previewMessage,
                 data: {
                     actions: notification_url?.trim()
                         ? [{ action: "URI", title: "Open", uri: notification_url.trim() }]
@@ -739,6 +772,7 @@ export class HomeMaintenancePanel extends LitElement {
                 notifications_enabled: task.notifications_enabled ?? false,
                 notification_target: task.notification_target ?? "",
                 notification_url: task.notification_url ?? "",
+                notification_time: task.notification_time ?? "09:00",
                 notify_when: task.notify_when ?? "due_and_overdue",
                 notify_days_before_due: task.notify_days_before_due ?? "",
             };
@@ -765,6 +799,7 @@ export class HomeMaintenancePanel extends LitElement {
             notifications_enabled: this._editFormData.notifications_enabled,
             notification_target: this._editFormData.notification_target?.trim() || null,
             notification_url: this._editFormData.notification_url?.trim() || null,
+            notification_time: this._editFormData.notification_time,
             notify_when: this._editFormData.notify_when,
             notify_days_before_due: this._editFormData.notify_days_before_due === "" ? null : Number(this._editFormData.notify_days_before_due),
         };
@@ -814,6 +849,60 @@ export class HomeMaintenancePanel extends LitElement {
 
     private _handleEditFormValueChanged(ev: CustomEvent) {
         this._editFormData = { ...this._editFormData, ...ev.detail.value };
+    }
+
+    private _getPreviewNotificationKind(task: {
+        title: string;
+        interval_value: number;
+        interval_type: string;
+        last_performed: string;
+        notify_when: "due" | "overdue" | "due_and_overdue";
+        notify_days_before_due: number | null;
+    }): "due" | "overdue" | "due_soon" {
+        const [datePart] = task.last_performed.split("T");
+        const [year, month, day] = datePart.split("-").map(Number);
+        const next = new Date(year, month - 1, day);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        switch (task.interval_type) {
+            case "days":
+                next.setDate(next.getDate() + task.interval_value);
+                break;
+            case "weeks":
+                next.setDate(next.getDate() + task.interval_value * 7);
+                break;
+            case "months":
+                next.setMonth(next.getMonth() + task.interval_value);
+                break;
+        }
+        next.setHours(0, 0, 0, 0);
+
+        const daysUntilDue = Math.round((next.getTime() - today.getTime()) / 86400000);
+        if (daysUntilDue < 0 && task.notify_when !== "due") {
+            return "overdue";
+        }
+        if (daysUntilDue === 0 && task.notify_when !== "overdue") {
+            return "due";
+        }
+        if (task.notify_days_before_due !== null) {
+            return "due_soon";
+        }
+        return task.notify_when === "overdue" ? "overdue" : "due";
+    }
+
+    private _buildPreviewMessage(
+        title: string,
+        kind: "due" | "overdue" | "due_soon",
+        daysBeforeDue: number | null,
+    ): string {
+        if (kind === "overdue") {
+            return `${title} is overdue.`;
+        }
+        if (kind === "due_soon") {
+            return `${title} is due in ${daysBeforeDue ?? 1} day(s).`;
+        }
+        return `${title} is due today.`;
     }
 
     static styles = commonStyle;

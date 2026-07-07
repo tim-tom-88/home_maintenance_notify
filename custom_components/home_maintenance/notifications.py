@@ -11,7 +11,7 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from . import const
-from .task_utils import get_task_due_details
+from .task_utils import get_task_due_details, parse_notification_time
 
 _LOGGER = logging.getLogger(__name__)
 MOBILE_APP_ACTION_EVENT = "mobile_app_notification_action"
@@ -32,7 +32,7 @@ class HomeMaintenanceNotificationManager:
         store = self.hass.data[const.DOMAIN]["store"]
         self._remove_store_listener = store.async_add_listener(self._handle_task_change)
         self._remove_time_listener = async_track_time_change(
-            self.hass, self._handle_task_change, hour=0, minute=5, second=0
+            self.hass, self._handle_task_change, minute="*", second=0
         )
         self._remove_action_listener = self.hass.bus.async_listen(
             MOBILE_APP_ACTION_EVENT, self._handle_mobile_action
@@ -80,7 +80,11 @@ class HomeMaintenanceNotificationManager:
         if due_details["is_snoozed"] and not force:
             return False
 
-        today = dt_util.now().date().isoformat()
+        now = dt_util.now()
+        if not force and not self._should_send_now(task, now):
+            return False
+
+        today = now.date().isoformat()
         if (
             not force
             and task.get("last_notification_date") == today
@@ -91,7 +95,7 @@ class HomeMaintenanceNotificationManager:
         domain, service = self._resolve_notification_service(
             task.get("notification_target")
         )
-        message = self._build_message(task, due_details, notification_kind)
+        message = self.build_message(task, due_details, notification_kind)
         data = self._build_notification_payload(task)
 
         await self.hass.services.async_call(
@@ -175,8 +179,13 @@ class HomeMaintenanceNotificationManager:
             return (domain, service)
         return ("notify", value)
 
-    def _build_message(
-        self,
+    def _should_send_now(self, task: dict[str, Any], now) -> bool:
+        """Check whether the current time is at or after the task's send time."""
+        hour, minute = parse_notification_time(task.get("notification_time"))
+        return (now.hour, now.minute) >= (hour, minute)
+
+    @staticmethod
+    def build_message(
         task: dict[str, Any],
         due_details: dict[str, Any],
         notification_kind: str | None,
