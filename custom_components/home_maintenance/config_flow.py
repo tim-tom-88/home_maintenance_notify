@@ -23,7 +23,8 @@ from .const import (
 class HomeMaintenanceConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow for Home Maintenenance."""
 
-    VERSION = "1.1.0"
+    VERSION = 1
+    MINOR_VERSION = 1
     CONNECTION_CLASS = CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(
