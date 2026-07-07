@@ -1,15 +1,18 @@
 """Store Home Maintenance configuration."""
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
 
 import attr
+from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry, storage
 from homeassistant.util import dt as dt_util
 
 from . import const
 from .binary_sensor import HomeMaintenanceSensor
+from .task_utils import normalize_task_data
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +32,14 @@ class HomeMaintenanceTask:
     last_performed: str = attr.ib()
     tag_id: str | None = attr.ib(default=None)
     icon: str | None = attr.ib(default=None)
+    notifications_enabled: bool = attr.ib(default=False)
+    notification_url: str | None = attr.ib(default=None)
+    notify_when: str = attr.ib(default="due_and_overdue")
+    notify_days_before_due: int | None = attr.ib(default=None)
+    notification_target: str | None = attr.ib(default=None)
+    snooze_until: str | None = attr.ib(default=None)
+    last_notification_kind: str | None = attr.ib(default=None)
+    last_notification_date: str | None = attr.ib(default=None)
 
 
 class TaskStore:
@@ -44,6 +55,7 @@ class TaskStore:
             minor_version=STORAGE_VERSION_MINOR,
         )
         self._tasks: dict[str, HomeMaintenanceTask] = {}
+        self._listeners: list[Callable[[], None]] = []
 
     async def async_load(self) -> None:
         """Load tasks from storage."""
@@ -52,7 +64,8 @@ class TaskStore:
             return
 
         self._tasks = {
-            task_data["id"]: HomeMaintenanceTask(**task_data) for task_data in data
+            task_data["id"]: HomeMaintenanceTask(**normalize_task_data(task_data))
+            for task_data in data
         }
 
     def get_all(self) -> list[dict]:
@@ -61,7 +74,25 @@ class TaskStore:
 
     def get(self, task_id: str) -> dict:
         """Get single task."""
-        return attr.asdict(self._tasks.get(task_id))
+        task = self._tasks.get(task_id)
+        return attr.asdict(task) if task is not None else {}
+
+    @callback
+    def async_add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Register a store listener."""
+        self._listeners.append(listener)
+
+        def remove_listener() -> None:
+            if listener in self._listeners:
+                self._listeners.remove(listener)
+
+        return remove_listener
+
+    @callback
+    def _notify_listeners(self) -> None:
+        """Notify listeners that tasks changed."""
+        for listener in list(self._listeners):
+            listener()
 
     def _get_tag_uuids(self) -> dict[str, str]:
         """Return a mapping of all task's tag friendly IDs into tag UUIDs."""
@@ -120,6 +151,7 @@ class TaskStore:
         self._tasks[task.id] = task
         self.hass.data[const.DOMAIN]["entities"][task.id] = entity
         self._save()
+        self._notify_listeners()
 
         return entity.unique_id
 
@@ -147,6 +179,7 @@ class TaskStore:
         # Remove from your task list and persist
         del self._tasks[task_id]
         self._save()
+        self._notify_listeners()
 
     def update_task(self, task_id: str, updated: dict) -> None:
         """Update an existing task with new values from a dictionary."""
@@ -156,6 +189,9 @@ class TaskStore:
         if entity is None or task is None:
             msg = "Task not found."
             raise RuntimeError(msg)
+
+        normalized = normalize_task_data({**attr.asdict(task), **updated})
+        updated = {key: normalized[key] for key in updated}
 
         for key, value in updated.items():
             entity.task[key] = value
@@ -177,6 +213,7 @@ class TaskStore:
 
         self.hass.async_create_task(entity.async_update_ha_state(force_refresh=True))
         self._save()
+        self._notify_listeners()
 
     def update_last_performed(
         self, task_id: str, performed_date: datetime | None = None
@@ -197,8 +234,35 @@ class TaskStore:
 
         entity.task["last_performed"] = performed_date_str
         task.last_performed = performed_date_str
+        entity.task["snooze_until"] = None
+        task.snooze_until = None
         self.hass.async_create_task(entity.async_update_ha_state(force_refresh=True))
         self._save()
+        self._notify_listeners()
+
+    def update_notification_state(self, task_id: str, updated: dict) -> None:
+        """Persist notification-only task state changes."""
+        entity = self.hass.data[const.DOMAIN]["entities"].get(task_id)
+        task = self._tasks.get(task_id)
+
+        if task is None:
+            msg = "Task not found."
+            raise RuntimeError(msg)
+
+        normalized = normalize_task_data({**attr.asdict(task), **updated})
+        for key, value in updated.items():
+            if key not in const.TASK_DEFAULTS:
+                continue
+            value = normalized[key]
+            setattr(task, key, value)
+            if entity is not None:
+                entity.task[key] = value
+
+        if entity is not None:
+            self.hass.async_create_task(entity.async_update_ha_state(force_refresh=True))
+
+        self._save()
+        self._notify_listeners()
 
     def _save(self) -> None:
         """Save tasks in the background."""

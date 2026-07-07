@@ -66,6 +66,11 @@ def websocket_add_task(
         last_performed=last_performed,
         tag_id=msg.get("tag_id"),
         icon=msg.get("icon"),
+        notifications_enabled=msg.get("notifications_enabled", False),
+        notification_url=msg.get("notification_url"),
+        notify_when=msg.get("notify_when", "due_and_overdue"),
+        notify_days_before_due=msg.get("notify_days_before_due"),
+        notification_target=msg.get("notification_target"),
     )
 
     labels = msg.get("labels", [])
@@ -80,9 +85,9 @@ def websocket_update_task(
     """Update a tasks values."""
     store = hass.data[DOMAIN].get("store")
     task_id = msg["task_id"]
-    updates = msg.get("updates", {})
+    updates = dict(msg.get("updates", {}))
 
-    last_str = updates["last_performed"]
+    last_str = updates.get("last_performed")
     if last_str:
         parsed = dt_util.parse_datetime(last_str)
         if parsed is None:
@@ -98,7 +103,10 @@ def websocket_update_task(
         last_performed = (
             dt_util.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         )
-    updates["last_performed"] = last_performed
+        if "last_performed" in updates:
+            updates["last_performed"] = last_performed
+    if last_str:
+        updates["last_performed"] = last_performed
 
     store.update_task(task_id, updates)
     connection.send_result(msg["id"], {"success": True})
@@ -187,6 +195,13 @@ async def async_register_websockets(hass: HomeAssistant) -> None:
                 vol.Optional("tag_id"): str,
                 vol.Optional("icon"): str,
                 vol.Optional("labels"): [str],
+                vol.Optional("notifications_enabled"): bool,
+                vol.Optional("notification_url"): str,
+                vol.Optional("notify_when"): vol.In(
+                    ["due", "overdue", "due_and_overdue"]
+                ),
+                vol.Optional("notify_days_before_due"): vol.Any(None, int),
+                vol.Optional("notification_target"): str,
             }
         ),
     )

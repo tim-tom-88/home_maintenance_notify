@@ -66,6 +66,7 @@ Download the <a href="https://github.com/TJPoorman/home_maintenance/releases">la
   - The last time you did it (Optional. If omitted will be today)
   - Select an NFC tag (Optional. Will mark the task complete when scanned)
   - Select an icon (Optional)
+  - Optionally enable notifications and set a notify service such as `notify.mobile_app_my_phone`
   - Click **Add Task**
 - Tasks will show if they are due or overdue
 - Click **Complete** to reset the Last Performed date to today
@@ -97,6 +98,37 @@ service: home_maintenance.reset_last_performed
 data:
   entity_id: binary_sensor.clean_gutters
   performed_date: "2025-06-19"
+```
+
+### `home_maintenance.complete_task`
+
+Marks a task complete using either its entity ID or task ID.
+
+```yaml
+service: home_maintenance.complete_task
+data:
+  entity_id: binary_sensor.clean_gutters
+```
+
+### `home_maintenance.snooze_task`
+
+Snoozes task notifications without changing the task's due state.
+
+```yaml
+service: home_maintenance.snooze_task
+data:
+  entity_id: binary_sensor.clean_gutters
+  days: 2
+```
+
+### `home_maintenance.send_task_notification`
+
+Immediately sends the configured notification for a task.
+
+```yaml
+service: home_maintenance.send_task_notification
+data:
+  entity_id: binary_sensor.clean_gutters
 ```
 
 ---

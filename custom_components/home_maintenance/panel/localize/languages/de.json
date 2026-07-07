@@ -38,6 +38,21 @@
                     },
                     "label": {
                         "heading": "Bezeichnung(en)"
+                    },
+                    "notifications_enabled": {
+                        "heading": "Benachrichtigungen aktivieren"
+                    },
+                    "notify_days_before_due": {
+                        "heading": "Tage vor Fälligkeit",
+                        "helper": "Optionaler Vorab-Hinweis vor der Fälligkeit"
+                    },
+                    "notification_target": {
+                        "heading": "Benachrichtigungsdienst",
+                        "helper": "Beispiel: notify.mobile_app_mein_handy oder mobile_app_mein_handy"
+                    },
+                    "notification_url": {
+                        "heading": "URL öffnen",
+                        "helper": "Optionale URL für die Aktion Öffnen"
                     }
                 },
                 "sections": {
@@ -87,6 +102,21 @@
                     },
                     "label": {
                         "heading": "Bezeichnung(en)"
+                    },
+                    "notifications_enabled": {
+                        "heading": "Benachrichtigungen aktivieren"
+                    },
+                    "notify_days_before_due": {
+                        "heading": "Tage vor Fälligkeit",
+                        "helper": "Optionaler Vorab-Hinweis vor der Fälligkeit"
+                    },
+                    "notification_target": {
+                        "heading": "Benachrichtigungsdienst",
+                        "helper": "Beispiel: notify.mobile_app_mein_handy oder mobile_app_mein_handy"
+                    },
+                    "notification_url": {
+                        "heading": "URL öffnen",
+                        "helper": "Optionale URL für die Aktion Öffnen"
                     }
                 },
                 "sections": {
@@ -96,6 +126,13 @@
                     "cancel": "Abbrechen",
                     "save": "Speichern"
                 }
+            }
+        },
+        "notifications": {
+            "when": {
+                "due": "Fällig",
+                "overdue": "Überfällig",
+                "due_and_overdue": "Fällig und überfällig"
             }
         }
     }

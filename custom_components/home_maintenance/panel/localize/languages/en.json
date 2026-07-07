@@ -38,6 +38,21 @@
                     },
                     "label": {
                         "heading": "Label(s)"
+                    },
+                    "notifications_enabled": {
+                        "heading": "Enable notifications"
+                    },
+                    "notify_days_before_due": {
+                        "heading": "Days before due",
+                        "helper": "Optional due-soon reminder offset"
+                    },
+                    "notification_target": {
+                        "heading": "Notify service",
+                        "helper": "Example: notify.mobile_app_my_phone or mobile_app_my_phone"
+                    },
+                    "notification_url": {
+                        "heading": "Open URL",
+                        "helper": "Optional URL used by the notification Open action"
                     }
                 },
                 "sections": {
@@ -87,6 +102,21 @@
                     },
                     "label": {
                         "heading": "Label(s)"
+                    },
+                    "notifications_enabled": {
+                        "heading": "Enable notifications"
+                    },
+                    "notify_days_before_due": {
+                        "heading": "Days before due",
+                        "helper": "Optional due-soon reminder offset"
+                    },
+                    "notification_target": {
+                        "heading": "Notify service",
+                        "helper": "Example: notify.mobile_app_my_phone or mobile_app_my_phone"
+                    },
+                    "notification_url": {
+                        "heading": "Open URL",
+                        "helper": "Optional URL used by the notification Open action"
                     }
                 },
                 "sections": {
@@ -96,6 +126,13 @@
                     "cancel": "Cancel",
                     "save": "Save"
                 }
+            }
+        },
+        "notifications": {
+            "when": {
+                "due": "Due",
+                "overdue": "Overdue",
+                "due_and_overdue": "Due and overdue"
             }
         }
     }

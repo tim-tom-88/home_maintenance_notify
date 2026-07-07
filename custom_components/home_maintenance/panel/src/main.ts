@@ -24,6 +24,11 @@ interface TaskFormData {
     icon: string;
     label: string[];
     tag: string;
+    notifications_enabled: boolean;
+    notification_target: string;
+    notification_url: string;
+    notify_when: "due" | "overdue" | "due_and_overdue";
+    notify_days_before_due: number | "";
 }
 
 export class HomeMaintenancePanel extends LitElement {
@@ -45,6 +50,11 @@ export class HomeMaintenancePanel extends LitElement {
         icon: "",
         label: [],
         tag: "",
+        notifications_enabled: false,
+        notification_target: "",
+        notification_url: "",
+        notify_when: "due_and_overdue",
+        notify_days_before_due: "",
     };
     private _advancedOpen: boolean = false;
 
@@ -58,6 +68,11 @@ export class HomeMaintenancePanel extends LitElement {
         icon: "",
         label: [],
         tag: "",
+        notifications_enabled: false,
+        notification_target: "",
+        notification_url: "",
+        notify_when: "due_and_overdue",
+        notify_days_before_due: "",
     };
 
     // Shared overflow menu state
@@ -262,6 +277,23 @@ export class HomeMaintenancePanel extends LitElement {
             { name: "icon", selector: { icon: {} }, },
             { name: "label", selector: { label: { multiple: true } }, },
             { name: "tag", selector: { entity: { filter: { domain: "tag" } } }, },
+            { name: "notifications_enabled", selector: { boolean: {} }, },
+            {
+                name: "notify_when",
+                selector: {
+                    select: {
+                        options: [
+                            { value: "due", label: localize("panel.notifications.when.due", this.hass!.language) },
+                            { value: "overdue", label: localize("panel.notifications.when.overdue", this.hass!.language) },
+                            { value: "due_and_overdue", label: localize("panel.notifications.when.due_and_overdue", this.hass!.language) },
+                        ],
+                        mode: "dropdown",
+                    },
+                },
+            },
+            { name: "notify_days_before_due", selector: { number: { min: 1, mode: "box" } }, },
+            { name: "notification_target", selector: { text: {} }, },
+            { name: "notification_url", selector: { text: {} }, },
         ]
     };
 
@@ -286,6 +318,23 @@ export class HomeMaintenancePanel extends LitElement {
             { name: "icon", selector: { icon: {} }, },
             { name: "label", selector: { label: { multiple: true } }, },
             { name: "tag", selector: { entity: { filter: { domain: "tag" } } }, },
+            { name: "notifications_enabled", selector: { boolean: {} }, },
+            {
+                name: "notify_when",
+                selector: {
+                    select: {
+                        options: [
+                            { value: "due", label: localize("panel.notifications.when.due", this.hass!.language) },
+                            { value: "overdue", label: localize("panel.notifications.when.overdue", this.hass!.language) },
+                            { value: "due_and_overdue", label: localize("panel.notifications.when.due_and_overdue", this.hass!.language) },
+                        ],
+                        mode: "dropdown",
+                    },
+                },
+            },
+            { name: "notify_days_before_due", selector: { number: { min: 1, mode: "box" } }, },
+            { name: "notification_target", selector: { text: {} }, },
+            { name: "notification_url", selector: { text: {} }, },
         ]
     };
 
@@ -339,6 +388,11 @@ export class HomeMaintenancePanel extends LitElement {
             icon: "",
             label: [],
             tag: "",
+            notifications_enabled: false,
+            notification_target: "",
+            notification_url: "",
+            notify_when: "due_and_overdue",
+            notify_days_before_due: "",
         };
 
         this.tasks = await loadTasks(this.hass!);
@@ -353,6 +407,11 @@ export class HomeMaintenancePanel extends LitElement {
             icon: "",
             label: [],
             tag: "",
+            notifications_enabled: false,
+            notification_target: "",
+            notification_url: "",
+            notify_when: "due_and_overdue",
+            notify_days_before_due: "",
         };
     }
 
@@ -459,8 +518,8 @@ export class HomeMaintenancePanel extends LitElement {
                 ></ha-form>
             </ha-expansion-panel>
 
-            <div class="form-field">
-                <mwc-button @click=${this._handleAddTaskClick}>
+            <div class="form-actions">
+                <mwc-button raised class="add-button" @click=${this._handleAddTaskClick}>
                     ${localize('panel.cards.new.actions.add_task', this.hass.language)}
                 </mwc-button>
             </div>
@@ -551,7 +610,20 @@ export class HomeMaintenancePanel extends LitElement {
     }
 
     private async _handleAddTaskClick() {
-        const { title, interval_value, interval_type, last_performed, tag, icon, label } = this._formData;
+        const {
+            title,
+            interval_value,
+            interval_type,
+            last_performed,
+            tag,
+            icon,
+            label,
+            notifications_enabled,
+            notification_target,
+            notification_url,
+            notify_when,
+            notify_days_before_due,
+        } = this._formData;
 
         if (!title?.trim() || !interval_value || !interval_type) {
             const msg = localize("panel.cards.new.alerts.required", this.hass!.language);
@@ -567,6 +639,11 @@ export class HomeMaintenancePanel extends LitElement {
             tag_id: tag?.trim() || undefined,
             icon: icon?.trim() || "mdi:calendar-check",
             labels: label ?? [],
+            notifications_enabled,
+            notification_target: notification_target?.trim() || undefined,
+            notification_url: notification_url?.trim() || undefined,
+            notify_when,
+            notify_days_before_due: notify_days_before_due === "" ? undefined : Number(notify_days_before_due),
         };
 
         try {
@@ -605,6 +682,11 @@ export class HomeMaintenancePanel extends LitElement {
                 icon: task.icon ?? "",
                 label: labels.map((l) => l.label_id),
                 tag: task.tag_id ?? "",
+                notifications_enabled: task.notifications_enabled ?? false,
+                notification_target: task.notification_target ?? "",
+                notification_url: task.notification_url ?? "",
+                notify_when: task.notify_when ?? "due_and_overdue",
+                notify_days_before_due: task.notify_days_before_due ?? "",
             };
 
             await this.updateComplete;
@@ -626,6 +708,11 @@ export class HomeMaintenancePanel extends LitElement {
             last_performed: lastPerformedISO,
             icon: this._editFormData.icon?.trim() || "mdi:calendar-check",
             labels: this._editFormData.label,
+            notifications_enabled: this._editFormData.notifications_enabled,
+            notification_target: this._editFormData.notification_target?.trim() || null,
+            notification_url: this._editFormData.notification_url?.trim() || null,
+            notify_when: this._editFormData.notify_when,
+            notify_days_before_due: this._editFormData.notify_days_before_due === "" ? null : Number(this._editFormData.notify_days_before_due),
         };
 
         if (this._editFormData.tag && this._editFormData.tag.trim() !== "") {

@@ -17,3 +17,73 @@ reset_last_performed:
       example: "2025-06-01"
       selector:
         date:
+
+complete_task:
+  name: Complete Task
+  description: Mark a maintenance task complete and update its last performed date.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The entity ID of the task entity to complete.
+      required: false
+      selector:
+        entity:
+          domain: binary_sensor
+    task_id:
+      name: Task ID
+      description: The internal task ID to complete.
+      required: false
+      selector:
+        text:
+    performed_date:
+      name: Performed Date
+      description: Optionally specify the date the task was completed.
+      required: false
+      example: "2025-06-01"
+      selector:
+        date:
+
+snooze_task:
+  name: Snooze Task
+  description: Snooze notifications for a maintenance task without marking it complete.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The entity ID of the task entity to snooze.
+      required: false
+      selector:
+        entity:
+          domain: binary_sensor
+    task_id:
+      name: Task ID
+      description: The internal task ID to snooze.
+      required: false
+      selector:
+        text:
+    days:
+      name: Days
+      description: Number of days to snooze notifications.
+      required: false
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+
+send_task_notification:
+  name: Send Task Notification
+  description: Immediately send the configured notification for a maintenance task.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The entity ID of the task entity to notify.
+      required: false
+      selector:
+        entity:
+          domain: binary_sensor
+    task_id:
+      name: Task ID
+      description: The internal task ID to notify.
+      required: false
+      selector:
+        text:

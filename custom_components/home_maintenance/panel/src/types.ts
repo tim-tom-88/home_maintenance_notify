@@ -49,4 +49,10 @@ export interface Task {
     last_performed: string;
     tag_id?: string;
     icon?: string;
+    notifications_enabled?: boolean;
+    notification_url?: string;
+    notify_when?: "due" | "overdue" | "due_and_overdue";
+    notify_days_before_due?: number | null;
+    notification_target?: string;
+    snooze_until?: string | null;
 }

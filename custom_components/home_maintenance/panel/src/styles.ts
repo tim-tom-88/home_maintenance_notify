@@ -139,6 +139,16 @@ export const commonStyle = css`
         color: var(--primary-text-color);
     }
 
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    .add-button {
+        --mdc-theme-primary: var(--primary-color);
+    }
+
     ha-dialog {
         --mdc-dialog-min-width: 600px;
     }

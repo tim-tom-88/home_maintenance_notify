@@ -4,7 +4,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
 
-VERSION = "1.5.2"
+VERSION = "1.6.0"
 NAME = "Home Maintenance"
 MANUFACTURER = "@TJPoorman"
 
@@ -23,12 +23,75 @@ PANEL_NAME = "home-maintenance-panel"
 DEVICE_KEY = "home_maintenance_hub"
 
 SERVICE_RESET = "reset_last_performed"
+SERVICE_COMPLETE_TASK = "complete_task"
+SERVICE_SNOOZE_TASK = "snooze_task"
+SERVICE_SEND_TASK_NOTIFICATION = "send_task_notification"
+NOTIFICATION_ACTION_COMPLETE = "HOME_MAINTENANCE_COMPLETE"
+NOTIFICATION_ACTION_SNOOZE = "HOME_MAINTENANCE_SNOOZE"
+DEFAULT_SNOOZE_DAYS = 1
+
+TASK_DEFAULTS = {
+    "notifications_enabled": False,
+    "notification_url": None,
+    "notify_when": "due_and_overdue",
+    "notify_days_before_due": None,
+    "notification_target": None,
+    "snooze_until": None,
+    "last_notification_kind": None,
+    "last_notification_date": None,
+}
+
 SERVICE_RESET_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_id,
         vol.Optional("performed_date"): cv.string,
     }
 )
+TASK_REFERENCE_SCHEMA = vol.Schema(
+    vol.Any(
+        {
+            vol.Required("task_id"): cv.string,
+            vol.Optional("entity_id"): cv.entity_id,
+        },
+        {
+            vol.Required("entity_id"): cv.entity_id,
+            vol.Optional("task_id"): cv.string,
+        },
+    )
+)
+SERVICE_COMPLETE_TASK_SCHEMA = vol.Schema(
+    vol.Any(
+        {
+            vol.Required("task_id"): cv.string,
+            vol.Optional("entity_id"): cv.entity_id,
+            vol.Optional("performed_date"): cv.string,
+        },
+        {
+            vol.Required("entity_id"): cv.entity_id,
+            vol.Optional("task_id"): cv.string,
+            vol.Optional("performed_date"): cv.string,
+        },
+    )
+)
+SERVICE_SNOOZE_TASK_SCHEMA = vol.Schema(
+    vol.Any(
+        {
+            vol.Required("task_id"): cv.string,
+            vol.Optional("entity_id"): cv.entity_id,
+            vol.Optional("days", default=DEFAULT_SNOOZE_DAYS): vol.All(
+                vol.Coerce(int), vol.Range(min=1)
+            ),
+        },
+        {
+            vol.Required("entity_id"): cv.entity_id,
+            vol.Optional("task_id"): cv.string,
+            vol.Optional("days", default=DEFAULT_SNOOZE_DAYS): vol.All(
+                vol.Coerce(int), vol.Range(min=1)
+            ),
+        },
+    )
+)
+SERVICE_SEND_TASK_NOTIFICATION_SCHEMA = TASK_REFERENCE_SCHEMA
 
 CONFIG_STEP_USER_DATA_SCHEMA = vol.Schema(
     {

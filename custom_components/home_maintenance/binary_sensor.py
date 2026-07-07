@@ -1,9 +1,7 @@
 """Support for Home Maintenance binary sensors."""
 
 import logging
-from datetime import datetime, timedelta
 
-from dateutil.relativedelta import relativedelta
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -13,6 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import const
+from .task_utils import get_task_due_details
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,19 +73,6 @@ class HomeMaintenanceSensor(BinarySensorEntity):
         """Return the icon for the task."""
         return self.task.get("icon", "mdi:calendar-check")
 
-    def _calculate_next_due(
-        self, last_performed: datetime, interval_value: int, interval_type: str
-    ) -> datetime:
-        """Calculate the next date based on last date and interval."""
-        if interval_type == "days":
-            return last_performed + timedelta(days=interval_value)
-        if interval_type == "weeks":
-            return last_performed + timedelta(weeks=interval_value)
-        if interval_type == "months":
-            return last_performed + relativedelta(months=interval_value)
-
-        return last_performed
-
     def _update_state(self) -> None:
         """Get the latest state of the sensor."""
         last = dt_util.parse_datetime(self.task["last_performed"])
@@ -101,27 +87,35 @@ class HomeMaintenanceSensor(BinarySensorEntity):
             if self.task["tag_id"]:
                 self._attr_extra_state_attributes["tag_id"] = self.task["tag_id"]
             return
-
-        if last.tzinfo is None:
-            last = dt_util.as_utc(last)
-
-        interval_value = self.task["interval_value"]
-        interval_type = self.task["interval_type"]
-        due_date = self._calculate_next_due(
-            last, interval_value, interval_type
-        ).replace(hour=0, minute=0, second=0, microsecond=0)
-
-        self._attr_is_on = (
-            dt_util.now().replace(hour=0, minute=0, second=0, microsecond=0) >= due_date
-        )
+        due_details = get_task_due_details(self.task)
+        due_date = due_details["next_due"]
+        self._attr_is_on = due_details["is_due"]
         self._attr_extra_state_attributes = {
             "last_performed": self.task["last_performed"],
             "interval_value": self.task["interval_value"],
             "interval_type": self.task["interval_type"],
-            "next_due": due_date.isoformat(),
+            "next_due": due_date.isoformat() if due_date else "unknown",
+            "due_status": due_details["status"],
+            "days_until_due": due_details["days_until_due"],
+            "notifications_enabled": self.task.get("notifications_enabled", False),
+            "notify_when": self.task.get("notify_when"),
         }
         if self.task["tag_id"]:
             self._attr_extra_state_attributes["tag_id"] = self.task["tag_id"]
+        if self.task.get("notification_url"):
+            self._attr_extra_state_attributes["notification_url"] = self.task[
+                "notification_url"
+            ]
+        if self.task.get("notify_days_before_due") is not None:
+            self._attr_extra_state_attributes["notify_days_before_due"] = self.task[
+                "notify_days_before_due"
+            ]
+        if self.task.get("notification_target"):
+            self._attr_extra_state_attributes["notification_target"] = self.task[
+                "notification_target"
+            ]
+        if self.task.get("snooze_until"):
+            self._attr_extra_state_attributes["snooze_until"] = self.task["snooze_until"]
 
     async def async_update(self) -> None:
         """Get the latest state of the sensor."""

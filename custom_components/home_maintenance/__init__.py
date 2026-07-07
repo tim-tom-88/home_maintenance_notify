@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import cast
 
 from homeassistant.components.binary_sensor import DOMAIN as PLATFORM
+from homeassistant.components.sensor import DOMAIN as SENSOR_PLATFORM
 from homeassistant.components.tag.const import EVENT_TAG_SCANNED
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, ServiceCall, callback
@@ -15,6 +16,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 
 from . import const
+from .notifications import HomeMaintenanceNotificationManager
 from .panel import (
     async_register_panel,
     async_unregister_panel,
@@ -75,7 +77,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "entities": {},
     }
 
-    await hass.config_entries.async_forward_entry_setups(entry, [PLATFORM])
+    await hass.config_entries.async_forward_entry_setups(
+        entry, [PLATFORM, SENSOR_PLATFORM]
+    )
 
     # Register the panel (frontend)
     await async_register_panel(hass, entry)
@@ -86,6 +90,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register custom services
     register_services(hass)
 
+    notification_manager = HomeMaintenanceNotificationManager(hass)
+    await notification_manager.async_setup()
+    hass.data[const.DOMAIN]["notification_manager"] = notification_manager
+
     # Register event listener for tag scanned
     unsub = hass.bus.async_listen(EVENT_TAG_SCANNED, handle_tag_scanned_event)
     hass.data[const.DOMAIN]["unsub_tag_scanned"] = unsub
@@ -95,12 +103,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Home Maintenance config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, [PLATFORM])
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, [PLATFORM, SENSOR_PLATFORM]
+    )
     if not unload_ok:
         return False
 
     if "unsub_tag_scanned" in hass.data[const.DOMAIN]:
         hass.data[const.DOMAIN]["unsub_tag_scanned"]()
+    if "notification_manager" in hass.data[const.DOMAIN]:
+        await hass.data[const.DOMAIN]["notification_manager"].async_unload()
 
     async_unregister_panel(hass)
     hass.data.pop(const.DOMAIN, None)
@@ -128,32 +140,77 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool: 
 def register_services(hass: HomeAssistant) -> None:
     """Register services used by home maintenance component."""
 
-    async def async_srv_reset(call: ServiceCall) -> None:
-        entity_id = call.data["entity_id"]
-        performed_date_str = call.data.get("performed_date")
-
-        performed_date = None
-        if performed_date_str is not None:
-            parsed_date = dt_util.parse_date(performed_date_str)
-            if parsed_date is None:
-                msg = f"Could not parse performed_date: {performed_date_str}"
-                raise ValueError(msg)
-            combined_date = datetime.combine(parsed_date, datetime.min.time())
-            performed_date = dt_util.as_local(combined_date)
+    def resolve_task_id(service_data: dict) -> str:
+        """Resolve a task reference from task_id or entity_id."""
+        if service_data.get("task_id"):
+            return service_data["task_id"]
 
         entity_registry = er.async_get(hass)
-        entry = cast("RegistryEntry", entity_registry.async_get(entity_id))
-        task_id = entry.unique_id
-        entity = hass.data[const.DOMAIN]["entities"].get(task_id)
-        if entity is None:
-            return
+        entry = cast("RegistryEntry", entity_registry.async_get(service_data["entity_id"]))
+        if entry is None:
+            msg = f"Entity not found: {service_data['entity_id']}"
+            raise ValueError(msg)
+        return entry.unique_id
 
+    def parse_performed_date(performed_date_str: str | None) -> datetime | None:
+        """Parse an optional performed date string."""
+        if performed_date_str is None:
+            return None
+
+        parsed_date = dt_util.parse_date(performed_date_str)
+        if parsed_date is None:
+            msg = f"Could not parse performed_date: {performed_date_str}"
+            raise ValueError(msg)
+        combined_date = datetime.combine(parsed_date, datetime.min.time())
+        return dt_util.as_local(combined_date)
+
+    async def async_srv_reset(call: ServiceCall) -> None:
+        task_id = resolve_task_id(call.data)
         store = hass.data[const.DOMAIN].get("store")
-        store.update_last_performed(task_id, performed_date)
+        store.update_last_performed(task_id, parse_performed_date(call.data.get("performed_date")))
 
-    hass.services.async_register(
-        const.DOMAIN,
-        const.SERVICE_RESET,
-        async_srv_reset,
-        schema=const.SERVICE_RESET_SCHEMA,
-    )
+    async def async_srv_complete_task(call: ServiceCall) -> None:
+        task_id = resolve_task_id(call.data)
+        store = hass.data[const.DOMAIN].get("store")
+        store.update_last_performed(task_id, parse_performed_date(call.data.get("performed_date")))
+
+    async def async_srv_snooze_task(call: ServiceCall) -> None:
+        task_id = resolve_task_id(call.data)
+        notification_manager = hass.data[const.DOMAIN]["notification_manager"]
+        await notification_manager.async_snooze_task(task_id, call.data["days"])
+
+    async def async_srv_send_task_notification(call: ServiceCall) -> None:
+        task_id = resolve_task_id(call.data)
+        notification_manager = hass.data[const.DOMAIN]["notification_manager"]
+        await notification_manager.async_send_notification(task_id, force=True)
+
+    if not hass.services.has_service(const.DOMAIN, const.SERVICE_RESET):
+        hass.services.async_register(
+            const.DOMAIN,
+            const.SERVICE_RESET,
+            async_srv_reset,
+            schema=const.SERVICE_RESET_SCHEMA,
+        )
+    if not hass.services.has_service(const.DOMAIN, const.SERVICE_COMPLETE_TASK):
+        hass.services.async_register(
+            const.DOMAIN,
+            const.SERVICE_COMPLETE_TASK,
+            async_srv_complete_task,
+            schema=const.SERVICE_COMPLETE_TASK_SCHEMA,
+        )
+    if not hass.services.has_service(const.DOMAIN, const.SERVICE_SNOOZE_TASK):
+        hass.services.async_register(
+            const.DOMAIN,
+            const.SERVICE_SNOOZE_TASK,
+            async_srv_snooze_task,
+            schema=const.SERVICE_SNOOZE_TASK_SCHEMA,
+        )
+    if not hass.services.has_service(
+        const.DOMAIN, const.SERVICE_SEND_TASK_NOTIFICATION
+    ):
+        hass.services.async_register(
+            const.DOMAIN,
+            const.SERVICE_SEND_TASK_NOTIFICATION,
+            async_srv_send_task_notification,
+            schema=const.SERVICE_SEND_TASK_NOTIFICATION_SCHEMA,
+        )
