@@ -39,7 +39,9 @@ def normalize_task_data(task_data: dict[str, Any]) -> dict[str, Any]:
         normalized.get("notifications_enabled", False)
     )
     normalized["notify_when"] = normalized.get("notify_when") or "due_and_overdue"
-    normalized["notification_time"] = normalized.get("notification_time") or "09:00"
+    normalized["notification_time"] = normalize_notification_time(
+        normalized.get("notification_time")
+    )
     return normalized
 
 
@@ -48,8 +50,23 @@ def parse_notification_time(value: str | None) -> tuple[int, int]:
     if not value:
         return (9, 0)
 
-    hour_text, minute_text = value.split(":", 1)
+    normalized = normalize_notification_time(value)
+    hour_text, minute_text = normalized.split(":", 1)
     return (int(hour_text), int(minute_text))
+
+
+def normalize_notification_time(value: str | None) -> str:
+    """Normalize a time selector value to HH:MM."""
+    if not value:
+        return "09:00"
+
+    parts = value.split(":")
+    if len(parts) < 2:
+        return "09:00"
+
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return f"{hour:02d}:{minute:02d}"
 
 
 def _as_local_start_of_day(value: datetime) -> datetime:
