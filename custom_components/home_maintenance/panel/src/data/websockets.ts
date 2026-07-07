@@ -16,6 +16,11 @@ export const loadLabelRegistry = (hass: HomeAssistant): Promise<Label[]> =>
         type: "config/label_registry/list",
     });
 
+export const loadServices = (hass: HomeAssistant): Promise<Record<string, Record<string, unknown>>> =>
+    hass.callWS({
+        type: "get_services",
+    });
+
 export const loadTasks = (hass: HomeAssistant): Promise<Task[]> =>
     hass.callWS({
         type: 'home_maintenance/get_tasks',

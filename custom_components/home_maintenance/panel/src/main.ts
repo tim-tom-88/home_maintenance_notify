@@ -14,7 +14,7 @@ import { VERSION } from "./const";
 import { loadConfigDashboard } from "./helpers";
 import { commonStyle } from './styles'
 import { EntityRegistryEntry, IntegrationConfig, IntervalType, INTERVAL_TYPES, getIntervalTypeLabels, Label, Task, Tag } from './types';
-import { completeTask, getConfig, loadLabelRegistry, loadRegistryEntries, loadTags, loadTask, loadTasks, removeTask, saveTask, updateTask } from './data/websockets';
+import { completeTask, getConfig, loadLabelRegistry, loadRegistryEntries, loadServices, loadTags, loadTask, loadTasks, removeTask, saveTask, updateTask } from './data/websockets';
 
 interface TaskFormData {
     title: string;
@@ -40,6 +40,7 @@ export class HomeMaintenancePanel extends LitElement {
     @state() private config: IntegrationConfig | null = null;
     @state() private registry: EntityRegistryEntry[] = [];
     @state() private labelRegistry: Label[] = [];
+    @state() private notifyServices: string[] = [];
 
     // New Task form state
     @state() private _formData: TaskFormData = {
@@ -292,7 +293,21 @@ export class HomeMaintenancePanel extends LitElement {
                 },
             },
             { name: "notify_days_before_due", selector: { number: { min: 1, mode: "box" } }, },
-            { name: "notification_target", selector: { text: {} }, },
+            {
+                name: "notification_target",
+                selector: {
+                    select: {
+                        options: [
+                            { value: "", label: localize("common.none", this.hass!.language) },
+                            ...this.notifyServices.map((service) => ({
+                                value: service,
+                                label: service,
+                            })),
+                        ],
+                        mode: "dropdown",
+                    },
+                },
+            },
             { name: "notification_url", selector: { text: {} }, },
         ]
     };
@@ -333,7 +348,21 @@ export class HomeMaintenancePanel extends LitElement {
                 },
             },
             { name: "notify_days_before_due", selector: { number: { min: 1, mode: "box" } }, },
-            { name: "notification_target", selector: { text: {} }, },
+            {
+                name: "notification_target",
+                selector: {
+                    select: {
+                        options: [
+                            { value: "", label: localize("common.none", this.hass!.language) },
+                            ...this.notifyServices.map((service) => ({
+                                value: service,
+                                label: service,
+                            })),
+                        ],
+                        mode: "dropdown",
+                    },
+                },
+            },
             { name: "notification_url", selector: { text: {} }, },
         ]
     };
@@ -377,6 +406,11 @@ export class HomeMaintenancePanel extends LitElement {
         this.config = await getConfig(this.hass!);
         this.registry = await loadRegistryEntries(this.hass!);
         this.labelRegistry = await loadLabelRegistry(this.hass!);
+        const services = await loadServices(this.hass!);
+        this.notifyServices = Object.keys(services.notify ?? {})
+            .filter((service) => service !== "notify")
+            .map((service) => `notify.${service}`)
+            .sort((a, b) => a.localeCompare(b));
     }
 
     private async resetForm() {
